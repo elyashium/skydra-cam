@@ -120,8 +120,4 @@ You should now see the SkyDra Detection Cam dashboard with the live video feed a
 
 ---
 
-## 🔧 Future Improvements
 
-- [ ] **Implement Browser-based Geolocation**: Use the browser's Geolocation API as a fallback if the phone doesn't provide GPS data.
-- [ ] **Add Data Logging**: Save sensor data and detection events to a file or database.
-- [ ] **Dockerize the Application**: Package the application into a Docker container for easier deployment.
