@@ -91,10 +91,10 @@ def get_sensors():
                 }
             }
             
-            # Parse GPS data
+            # Parse GPS data (check for gps key - might not be available)
             if 'gps' in sensor_data and sensor_data['gps'].get('data'):
                 try:
-                    gps_values = sensor_data['gps']['data'][0][0]['values']
+                    gps_values = sensor_data['gps']['data'][0][1]  # [timestamp, [values]]
                     processed_data['gps'] = {
                         'available': True,
                         'latitude': round(gps_values[0], 6),
@@ -107,7 +107,7 @@ def get_sensors():
             # Parse Accelerometer data
             if 'accel' in sensor_data and sensor_data['accel'].get('data'):
                 try:
-                    accel_values = sensor_data['accel']['data'][0][0]['values']
+                    accel_values = sensor_data['accel']['data'][0][1]  # [timestamp, [x, y, z]]
                     processed_data['accelerometer'] = {
                         'available': True,
                         'x': round(accel_values[0], 2),
@@ -120,7 +120,7 @@ def get_sensors():
             # Parse Gyroscope data
             if 'gyro' in sensor_data and sensor_data['gyro'].get('data'):
                 try:
-                    gyro_values = sensor_data['gyro']['data'][0][0]['values']
+                    gyro_values = sensor_data['gyro']['data'][0][1]  # [timestamp, [x, y, z]]
                     processed_data['gyroscope'] = {
                         'available': True,
                         'x': round(gyro_values[0], 3),
@@ -133,7 +133,7 @@ def get_sensors():
             # Parse Magnetometer data
             if 'mag' in sensor_data and sensor_data['mag'].get('data'):
                 try:
-                    mag_values = sensor_data['mag']['data'][0][0]['values']
+                    mag_values = sensor_data['mag']['data'][0][1]  # [timestamp, [x, y, z]]
                     processed_data['magnetometer'] = {
                         'available': True,
                         'x': round(mag_values[0], 1),
@@ -146,23 +146,23 @@ def get_sensors():
             # Parse Light sensor
             if 'light' in sensor_data and sensor_data['light'].get('data'):
                 try:
-                    light_value = sensor_data['light']['data'][0][0]['values'][0]
+                    light_value = sensor_data['light']['data'][0][1][0]  # [timestamp, [value]]
                     processed_data['environment']['light'] = round(light_value, 1)
                 except (IndexError, KeyError):
                     pass
             
             # Parse Proximity sensor
-            if 'prox' in sensor_data and sensor_data['prox'].get('data'):
+            if 'proximity' in sensor_data and sensor_data['proximity'].get('data'):
                 try:
-                    prox_value = sensor_data['prox']['data'][0][0]['values'][0]
+                    prox_value = sensor_data['proximity']['data'][0][1][0]  # [timestamp, [value]]
                     processed_data['environment']['proximity'] = round(prox_value, 1)
                 except (IndexError, KeyError):
                     pass
             
-            # Parse Battery temperature
-            if 'batTemp' in sensor_data and sensor_data['batTemp'].get('data'):
+            # Parse Battery level (percentage)
+            if 'battery_level' in sensor_data and sensor_data['battery_level'].get('data'):
                 try:
-                    battery_value = sensor_data['batTemp']['data'][0][0]['values'][0]
+                    battery_value = sensor_data['battery_level']['data'][0][1][0]  # [timestamp, [percentage]]
                     processed_data['environment']['battery'] = round(battery_value, 1)
                 except (IndexError, KeyError):
                     pass
