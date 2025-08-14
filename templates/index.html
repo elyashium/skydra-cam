@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkyDra Detection Cam - Monitoring Dashboard</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+        
         * {
             margin: 0;
             padding: 0;
@@ -12,60 +14,87 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: #ffffff;
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background: #000000;
+            color: #00ff00;
+            height: 100vh;
+            padding: 8px;
+            overflow: hidden;
+            margin: 0;
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 30px;
+            text-align: left;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #003300;
+            padding-bottom: 8px;
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            margin-bottom: 10px;
+            font-size: 1.4rem;
+            font-weight: 400;
+            margin-bottom: 2px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
 
         .header .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
+            font-size: 0.7rem;
+            opacity: 0.6;
             font-weight: 300;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .system-info {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 0.7rem;
+            opacity: 0.6;
+            text-align: right;
         }
 
         .dashboard {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-            max-width: 1400px;
-            margin: 0 auto;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 8px;
+            height: calc(100vh - 65px);
+            width: 100%;
         }
 
         .video-section {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-header {
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+            padding: 4px 0;
+            border-bottom: 1px solid #003300;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .video-container {
             position: relative;
-            display: inline-block;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: 1px solid #00ff00;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
         }
 
         #videoElement {
             display: block;
-            width: 100%;
-            max-width: 640px;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
             height: auto;
         }
 
@@ -76,118 +105,119 @@
             pointer-events: none;
         }
 
+        .detection-stats {
+            margin-top: 6px;
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            padding: 6px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            font-size: 0.7rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            opacity: 0.6;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            color: #00ff00;
+            font-weight: 500;
+        }
+
         .sensors-grid {
             display: grid;
-            gap: 20px;
+            gap: 6px;
+            grid-template-rows: repeat(4, 1fr);
+            height: 100%;
         }
 
         .sensor-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .sensor-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            padding: 6px;
+            overflow: hidden;
         }
 
         .sensor-card h3 {
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .sensor-icon {
-            width: 24px;
-            height: 24px;
-            background: #4CAF50;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
+            font-size: 0.7rem;
+            margin-bottom: 4px;
+            color: #00ff00;
+            font-weight: 400;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #003300;
+            padding-bottom: 2px;
         }
 
         .sensor-data {
             display: grid;
-            gap: 8px;
+            gap: 2px;
         }
 
         .data-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .data-row:last-child {
-            border-bottom: none;
+            padding: 1px 0;
+            font-size: 0.65rem;
         }
 
         .data-label {
-            font-weight: 500;
-            opacity: 0.8;
+            font-weight: 400;
+            opacity: 0.7;
+            font-size: 0.6rem;
+            text-transform: uppercase;
         }
 
         .data-value {
-            font-weight: 600;
-            color: #4CAF50;
-            font-family: 'Courier New', monospace;
+            font-weight: 500;
+            color: #00ff00;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .status-indicator {
             display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 8px;
+            width: 6px;
+            height: 6px;
+            margin-right: 4px;
         }
 
         .status-online {
-            background: #4CAF50;
-            animation: pulse 2s infinite;
+            background: #00ff00;
+            box-shadow: 0 0 5px #00ff00;
         }
 
         .status-offline {
-            background: #f44336;
+            background: #ff0000;
+            box-shadow: 0 0 5px #ff0000;
         }
 
         .detection-stats {
-            background: rgba(76, 175, 80, 0.1);
-            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-color: #00ff00;
         }
 
-        .gps-card {
-            background: rgba(33, 150, 243, 0.1);
-            border: 1px solid rgba(33, 150, 243, 0.3);
+        .detection-stats h3 {
+            color: #00ff00;
         }
 
-        .motion-card {
-            background: rgba(255, 152, 0, 0.1);
-            border: 1px solid rgba(255, 152, 0, 0.3);
-        }
-
-        .environment-card {
-            background: rgba(156, 39, 176, 0.1);
-            border: 1px solid rgba(156, 39, 176, 0.3);
-        }
-
-        @media (max-width: 768px) {
+        @media (max-width: 1200px) {
             .dashboard {
                 grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1fr;
             }
             
             .header h1 {
-                font-size: 2rem;
+                font-size: 1.5rem;
             }
             
             body {
@@ -195,52 +225,72 @@
             }
         }
 
-        .loading {
-            opacity: 0.6;
-            animation: pulse 2s infinite;
+        /* Matrix-style glow effects */
+        .sensor-card {
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
         }
 
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
+        .video-section {
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000000;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00cc00;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🛸 SkyDra Detection Cam</h1>
-        <p class="subtitle">Advanced Monitoring Dashboard with Real-time Object Detection</p>
+        <h1>SKYDRA DETECTION CAM</h1>
+        <p class="subtitle">NEURAL SURVEILLANCE PROTOCOL v2.1.0</p>
+    </div>
+
+    <div class="system-info">
+        <div>SYS: ONLINE</div>
+        <div id="currentTime">--:--:--</div>
     </div>
 
     <div class="dashboard">
         <div class="video-section">
-            <h2 style="margin-bottom: 20px;">📹 Live Video Feed</h2>
+            <div class="video-header">LIVE FEED :: CAM_01</div>
             <div class="video-container">
                 <img id="videoElement" src="{{ url_for('video_feed') }}" width="640" height="640">
                 <canvas id="canvas"></canvas>
             </div>
             
-            <div class="sensor-card detection-stats" style="margin-top: 20px;">
-                <h3><span class="sensor-icon">🎯</span>Detection Statistics</h3>
-                <div class="sensor-data">
-                    <div class="data-row">
-                        <span class="data-label">Objects Detected:</span>
-                        <span class="data-value" id="objectCount">0</span>
+            <div class="detection-stats">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">TARGETS</div>
+                        <div class="stat-value" id="objectCount">0</div>
                     </div>
-                    <div class="data-row">
-                        <span class="data-label">Inference Time:</span>
-                        <span class="data-value" id="inferenceTime">-- ms</span>
+                    <div class="stat-item">
+                        <div class="stat-label">LATENCY</div>
+                        <div class="stat-value" id="inferenceTime">--</div>
                     </div>
-                    <div class="data-row">
-                        <span class="data-label">FPS:</span>
-                        <span class="data-value" id="fps">--</span>
+                    <div class="stat-item">
+                        <div class="stat-label">FPS</div>
+                        <div class="stat-value" id="fps">--</div>
                     </div>
-                    <div class="data-row">
-                        <span class="data-label">Status:</span>
-                        <span class="data-value">
-                            <span class="status-indicator status-online"></span>Active
-                        </span>
+                    <div class="stat-item">
+                        <div class="stat-label">STATUS</div>
+                        <div class="stat-value">
+                            <span class="status-indicator status-online"></span>ACTIVE
+                        </div>
                     </div>
                 </div>
             </div>
@@ -248,91 +298,91 @@
 
         <div class="sensors-grid">
             <!-- GPS Location Card -->
-            <div class="sensor-card gps-card">
-                <h3><span class="sensor-icon">📍</span>GPS Location</h3>
+            <div class="sensor-card">
+                <h3>GPS :: COORDINATE_SYS</h3>
                 <div class="sensor-data">
                     <div class="data-row">
-                        <span class="data-label">Latitude:</span>
-                        <span class="data-value" id="lat">Loading...</span>
+                        <span class="data-label">LAT:</span>
+                        <span class="data-value" id="lat">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Longitude:</span>
-                        <span class="data-value" id="lon">Loading...</span>
+                        <span class="data-label">LON:</span>
+                        <span class="data-value" id="lon">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Status:</span>
+                        <span class="data-label">STAT:</span>
                         <span class="data-value" id="gpsStatus">
-                            <span class="status-indicator status-offline"></span>Searching...
+                            <span class="status-indicator status-offline"></span>OFFLINE
                         </span>
                     </div>
                 </div>
             </div>
 
             <!-- Motion Sensors Card -->
-            <div class="sensor-card motion-card">
-                <h3><span class="sensor-icon">🏃</span>Motion Sensors</h3>
+            <div class="sensor-card">
+                <h3>MOTION :: ACCEL/GYRO</h3>
                 <div class="sensor-data">
                     <div class="data-row">
-                        <span class="data-label">Accel X:</span>
-                        <span class="data-value" id="accelX">--</span>
+                        <span class="data-label">ACC_X:</span>
+                        <span class="data-value" id="accelX">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Accel Y:</span>
-                        <span class="data-value" id="accelY">--</span>
+                        <span class="data-label">ACC_Y:</span>
+                        <span class="data-value" id="accelY">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Accel Z:</span>
-                        <span class="data-value" id="accelZ">--</span>
+                        <span class="data-label">ACC_Z:</span>
+                        <span class="data-value" id="accelZ">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Gyro X:</span>
-                        <span class="data-value" id="gyroX">--</span>
+                        <span class="data-label">GYR_X:</span>
+                        <span class="data-value" id="gyroX">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Gyro Y:</span>
-                        <span class="data-value" id="gyroY">--</span>
+                        <span class="data-label">GYR_Y:</span>
+                        <span class="data-value" id="gyroY">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Gyro Z:</span>
-                        <span class="data-value" id="gyroZ">--</span>
+                        <span class="data-label">GYR_Z:</span>
+                        <span class="data-value" id="gyroZ">NULL</span>
                     </div>
                 </div>
             </div>
 
             <!-- Environment Sensors Card -->
-            <div class="sensor-card environment-card">
-                <h3><span class="sensor-icon">🌡️</span>Environment</h3>
+            <div class="sensor-card">
+                <h3>ENV :: AMBIENT_DATA</h3>
                 <div class="sensor-data">
                     <div class="data-row">
-                        <span class="data-label">Light Level:</span>
-                        <span class="data-value" id="light">--</span>
+                        <span class="data-label">LUX:</span>
+                        <span class="data-value" id="light">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Proximity:</span>
-                        <span class="data-value" id="proximity">--</span>
+                        <span class="data-label">PROX:</span>
+                        <span class="data-value" id="proximity">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Battery:</span>
-                        <span class="data-value" id="battery">--</span>
+                        <span class="data-label">PWR:</span>
+                        <span class="data-value" id="battery">NULL</span>
                     </div>
                 </div>
             </div>
 
             <!-- Magnetometer Card -->
             <div class="sensor-card">
-                <h3><span class="sensor-icon">🧭</span>Magnetometer</h3>
+                <h3>MAG :: COMPASS_SYS</h3>
                 <div class="sensor-data">
                     <div class="data-row">
-                        <span class="data-label">Mag X:</span>
-                        <span class="data-value" id="magX">--</span>
+                        <span class="data-label">MAG_X:</span>
+                        <span class="data-value" id="magX">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Mag Y:</span>
-                        <span class="data-value" id="magY">--</span>
+                        <span class="data-label">MAG_Y:</span>
+                        <span class="data-value" id="magY">NULL</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Mag Z:</span>
-                        <span class="data-value" id="magZ">--</span>
+                        <span class="data-label">MAG_Z:</span>
+                        <span class="data-value" id="magZ">NULL</span>
                     </div>
                 </div>
             </div>
@@ -367,12 +417,19 @@
         // --- 1. Model & UI Setup ---
         async function setup() {
             try {
-                // The model expects a 640x640 input, so we'll work with that size
-                canvas.width = 640;
-                canvas.height = 640;
-
                 session = await ort.InferenceSession.create(modelPath);
                 console.log("ONNX session created successfully.");
+                
+                // Wait for the video element to load and then set canvas size
+                video.onload = function() {
+                    updateCanvasSize();
+                };
+                
+                // Also update canvas size on window resize
+                window.addEventListener('resize', updateCanvasSize);
+                
+                // Initial canvas size setup
+                updateCanvasSize();
                 
                 // Start the detection loop directly
                 detectFrame(); 
@@ -389,6 +446,15 @@
             } catch (e) {
                 console.error(`Failed to setup ONNX session: ${e}`);
             }
+        }
+
+        // Function to properly size the canvas to match the video display
+        function updateCanvasSize() {
+            const rect = video.getBoundingClientRect();
+            canvas.width = video.offsetWidth;
+            canvas.height = video.offsetHeight;
+            canvas.style.width = video.offsetWidth + 'px';
+            canvas.style.height = video.offsetHeight + 'px';
         }
 
         // --- 2. Main Detection Loop ---
@@ -449,6 +515,10 @@
         function drawBoundingBoxes(outputData) {
             ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous boxes
             
+            // Calculate scaling factors from model input (640x640) to actual display size
+            const scaleX = canvas.width / 640;
+            const scaleY = canvas.height / 640;
+            
             const boxes = [];
             for (let i = 0; i < 8400; i++) {
                 const class_id = 0; // We are only interested in 'person'
@@ -470,17 +540,64 @@
             const finalBoxes = nonMaxSuppression(boxes, 0.5);
 
             finalBoxes.forEach(([x, y, width, height, label, prob]) => {
-                ctx.strokeStyle = "#4CAF50";
+                // Scale coordinates to match the actual display size
+                const scaledX = x * scaleX;
+                const scaledY = y * scaleY;
+                const scaledWidth = width * scaleX;
+                const scaledHeight = height * scaleY;
+
+                // Main bounding box
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
+
+                // Corner accents for Matrix style
+                const cornerSize = Math.min(15, scaledWidth / 4, scaledHeight / 4);
+                ctx.strokeStyle = "#00ff00";
                 ctx.lineWidth = 3;
-                ctx.strokeRect(x, y, width, height);
+                
+                // Top-left corner
+                ctx.beginPath();
+                ctx.moveTo(scaledX, scaledY + cornerSize);
+                ctx.lineTo(scaledX, scaledY);
+                ctx.lineTo(scaledX + cornerSize, scaledY);
+                ctx.stroke();
 
-                // Draw label background
-                ctx.fillStyle = "rgba(76, 175, 80, 0.8)";
-                ctx.fillRect(x, y > 30 ? y - 30 : y, 120, 25);
+                // Top-right corner
+                ctx.beginPath();
+                ctx.moveTo(scaledX + scaledWidth - cornerSize, scaledY);
+                ctx.lineTo(scaledX + scaledWidth, scaledY);
+                ctx.lineTo(scaledX + scaledWidth, scaledY + cornerSize);
+                ctx.stroke();
 
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 16px sans-serif";
-                ctx.fillText(`${label} ${(prob * 100).toFixed(0)}%`, x + 5, y > 30 ? y - 10 : y + 18);
+                // Bottom-left corner
+                ctx.beginPath();
+                ctx.moveTo(scaledX, scaledY + scaledHeight - cornerSize);
+                ctx.lineTo(scaledX, scaledY + scaledHeight);
+                ctx.lineTo(scaledX + cornerSize, scaledY + scaledHeight);
+                ctx.stroke();
+
+                // Bottom-right corner
+                ctx.beginPath();
+                ctx.moveTo(scaledX + scaledWidth - cornerSize, scaledY + scaledHeight);
+                ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight);
+                ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight - cornerSize);
+                ctx.stroke();
+
+                // Label background
+                const labelWidth = Math.min(100, scaledWidth);
+                const labelHeight = 20;
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillRect(scaledX, scaledY > 25 ? scaledY - 25 : scaledY + scaledHeight, labelWidth, labelHeight);
+
+                // Label text
+                ctx.fillStyle = "#00ff00";
+                ctx.font = `${Math.max(10, Math.min(12, scaledWidth / 8))}px 'JetBrains Mono', monospace`;
+                ctx.shadowColor = "#00ff00";
+                ctx.shadowBlur = 5;
+                ctx.fillText(`${label.toUpperCase()} ${(prob * 100).toFixed(0)}%`, 
+                    scaledX + 3, scaledY > 25 ? scaledY - 8 : scaledY + scaledHeight + 15);
+                ctx.shadowBlur = 0;
             });
 
             return finalBoxes.length;
@@ -511,71 +628,105 @@
 
         // --- 5. Sensor Data Fetching ---
         async function fetchSensorData() {
-            const sensorsUrl = `${cameraBaseUrl}/sensors.json`;
-
             try {
-                const response = await fetch(sensorsUrl);
+                const response = await fetch('/api/sensors');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const sensorData = await response.json();
+                const data = await response.json();
 
-                // GPS Data
-                if (sensorData.gps && sensorData.gps.data && sensorData.gps.data.length > 0) {
-                    const gps = sensorData.gps.data[0][0].values;
-                    latSpan.textContent = gps[0].toFixed(6);
-                    lonSpan.textContent = gps[1].toFixed(6);
-                    gpsStatusSpan.innerHTML = '<span class="status-indicator status-online"></span>Connected';
+                if (data.status === 'success') {
+                    // GPS Data
+                    if (data.gps.available) {
+                        latSpan.textContent = data.gps.latitude.toFixed(6);
+                        lonSpan.textContent = data.gps.longitude.toFixed(6);
+                        gpsStatusSpan.innerHTML = '<span class="status-indicator status-online"></span>ONLINE';
+                    } else {
+                        latSpan.textContent = 'NULL';
+                        lonSpan.textContent = 'NULL';
+                        gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>OFFLINE';
+                    }
+
+                    // Accelerometer Data
+                    if (data.accelerometer.available) {
+                        document.getElementById('accelX').textContent = `${data.accelerometer.x} m/s²`;
+                        document.getElementById('accelY').textContent = `${data.accelerometer.y} m/s²`;
+                        document.getElementById('accelZ').textContent = `${data.accelerometer.z} m/s²`;
+                    } else {
+                        document.getElementById('accelX').textContent = 'NULL';
+                        document.getElementById('accelY').textContent = 'NULL';
+                        document.getElementById('accelZ').textContent = 'NULL';
+                    }
+
+                    // Gyroscope Data
+                    if (data.gyroscope.available) {
+                        document.getElementById('gyroX').textContent = `${data.gyroscope.x} rad/s`;
+                        document.getElementById('gyroY').textContent = `${data.gyroscope.y} rad/s`;
+                        document.getElementById('gyroZ').textContent = `${data.gyroscope.z} rad/s`;
+                    } else {
+                        document.getElementById('gyroX').textContent = 'NULL';
+                        document.getElementById('gyroY').textContent = 'NULL';
+                        document.getElementById('gyroZ').textContent = 'NULL';
+                    }
+
+                    // Magnetometer Data
+                    if (data.magnetometer.available) {
+                        document.getElementById('magX').textContent = `${data.magnetometer.x} μT`;
+                        document.getElementById('magY').textContent = `${data.magnetometer.y} μT`;
+                        document.getElementById('magZ').textContent = `${data.magnetometer.z} μT`;
+                    } else {
+                        document.getElementById('magX').textContent = 'NULL';
+                        document.getElementById('magY').textContent = 'NULL';
+                        document.getElementById('magZ').textContent = 'NULL';
+                    }
+
+                    // Environment Data
+                    document.getElementById('light').textContent = data.environment.light !== null 
+                        ? `${data.environment.light} lux` : 'NULL';
+                    document.getElementById('proximity').textContent = data.environment.proximity !== null 
+                        ? `${data.environment.proximity} cm` : 'NULL';
+                    document.getElementById('battery').textContent = data.environment.battery !== null 
+                        ? `${data.environment.battery}°C` : 'NULL';
+
                 } else {
-                    latSpan.textContent = 'No data';
-                    lonSpan.textContent = 'No data';
-                    gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>No GPS';
+                    // Handle error response from backend
+                    console.error('Backend error:', data.message);
+                    setAllSensorValues('ERROR');
                 }
 
-                // Accelerometer
-                updateSensorValue(sensorData, 'accel', ['accelX', 'accelY', 'accelZ'], ' m/s²');
-
-                // Gyroscope  
-                updateSensorValue(sensorData, 'gyro', ['gyroX', 'gyroY', 'gyroZ'], ' rad/s');
-
-                // Magnetometer
-                updateSensorValue(sensorData, 'mag', ['magX', 'magY', 'magZ'], ' μT');
-
-                // Light sensor
-                updateSingleSensorValue(sensorData, 'light', 'light', ' lux');
-
-                // Proximity sensor
-                updateSingleSensorValue(sensorData, 'prox', 'proximity', ' cm');
-
-                // Battery
-                updateSingleSensorValue(sensorData, 'batTemp', 'battery', '°C');
-
             } catch (e) {
-                console.error(`Could not fetch sensor data from ${sensorsUrl}. Error: ${e}`);
-                // Set error states
-                latSpan.textContent = 'Error';
-                lonSpan.textContent = 'Error';
-                gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>Error';
+                console.error(`Could not fetch sensor data from Flask backend. Error: ${e}`);
+                setAllSensorValues('ERROR');
             }
         }
 
-        function updateSensorValue(sensorData, sensorKey, elementIds, unit) {
-            if (sensorData[sensorKey] && sensorData[sensorKey].data && sensorData[sensorKey].data.length > 0) {
-                const values = sensorData[sensorKey].data[0][0].values;
-                elementIds.forEach((id, index) => {
-                    if (values[index] !== undefined) {
-                        document.getElementById(id).textContent = `${values[index].toFixed(2)}${unit}`;
-                    }
-                });
-            }
+        function setAllSensorValues(value) {
+            // Set all sensor values to the specified value (for error states)
+            latSpan.textContent = value;
+            lonSpan.textContent = value;
+            gpsStatusSpan.innerHTML = `<span class="status-indicator status-offline"></span>${value}`;
+            
+            ['accelX', 'accelY', 'accelZ', 'gyroX', 'gyroY', 'gyroZ', 
+             'magX', 'magY', 'magZ', 'light', 'proximity', 'battery'].forEach(id => {
+                document.getElementById(id).textContent = value;
+            });
         }
 
-        function updateSingleSensorValue(sensorData, sensorKey, elementId, unit) {
-            if (sensorData[sensorKey] && sensorData[sensorKey].data && sensorData[sensorKey].data.length > 0) {
-                const value = sensorData[sensorKey].data[0][0].values[0];
-                document.getElementById(elementId).textContent = `${value.toFixed(2)}${unit}`;
-            }
+        // Real-time clock
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('currentTime').textContent = timeString;
         }
+
+        // Update clock every second
+        setInterval(updateClock, 1000);
+        updateClock(); // Initial call
 
         // Start everything
         setup();

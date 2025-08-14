@@ -6,3 +6,4 @@ Flask
 onnx
 onnxruntime
 onnxslim
+requests
