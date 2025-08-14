@@ -1,0 +1,8 @@
+numpy<2.0
+opencv-python
+torch
+ultralytics
+Flask
+onnx
+onnxruntime
+onnxslim

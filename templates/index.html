@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyDra Detection Cam - Monitoring Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .video-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .video-container {
+            position: relative;
+            display: inline-block;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        #videoElement {
+            display: block;
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .sensors-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .sensor-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .sensor-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .sensor-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sensor-icon {
+            width: 24px;
+            height: 24px;
+            background: #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .sensor-data {
+            display: grid;
+            gap: 8px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-weight: 500;
+            opacity: 0.8;
+        }
+
+        .data-value {
+            font-weight: 600;
+            color: #4CAF50;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-offline {
+            background: #f44336;
+        }
+
+        .detection-stats {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .gps-card {
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+
+        .motion-card {
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .environment-card {
+            background: rgba(156, 39, 176, 0.1);
+            border: 1px solid rgba(156, 39, 176, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            body {
+                padding: 10px;
+            }
+        }
+
+        .loading {
+            opacity: 0.6;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛸 SkyDra Detection Cam</h1>
+        <p class="subtitle">Advanced Monitoring Dashboard with Real-time Object Detection</p>
+    </div>
+
+    <div class="dashboard">
+        <div class="video-section">
+            <h2 style="margin-bottom: 20px;">📹 Live Video Feed</h2>
+            <div class="video-container">
+                <img id="videoElement" src="{{ url_for('video_feed') }}" width="640" height="640">
+                <canvas id="canvas"></canvas>
+            </div>
+            
+            <div class="sensor-card detection-stats" style="margin-top: 20px;">
+                <h3><span class="sensor-icon">🎯</span>Detection Statistics</h3>
+                <div class="sensor-data">
+                    <div class="data-row">
+                        <span class="data-label">Objects Detected:</span>
+                        <span class="data-value" id="objectCount">0</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Inference Time:</span>
+                        <span class="data-value" id="inferenceTime">-- ms</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">FPS:</span>
+                        <span class="data-value" id="fps">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Status:</span>
+                        <span class="data-value">
+                            <span class="status-indicator status-online"></span>Active
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sensors-grid">
+            <!-- GPS Location Card -->
+            <div class="sensor-card gps-card">
+                <h3><span class="sensor-icon">📍</span>GPS Location</h3>
+                <div class="sensor-data">
+                    <div class="data-row">
+                        <span class="data-label">Latitude:</span>
+                        <span class="data-value" id="lat">Loading...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Longitude:</span>
+                        <span class="data-value" id="lon">Loading...</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Status:</span>
+                        <span class="data-value" id="gpsStatus">
+                            <span class="status-indicator status-offline"></span>Searching...
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Motion Sensors Card -->
+            <div class="sensor-card motion-card">
+                <h3><span class="sensor-icon">🏃</span>Motion Sensors</h3>
+                <div class="sensor-data">
+                    <div class="data-row">
+                        <span class="data-label">Accel X:</span>
+                        <span class="data-value" id="accelX">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Accel Y:</span>
+                        <span class="data-value" id="accelY">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Accel Z:</span>
+                        <span class="data-value" id="accelZ">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Gyro X:</span>
+                        <span class="data-value" id="gyroX">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Gyro Y:</span>
+                        <span class="data-value" id="gyroY">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Gyro Z:</span>
+                        <span class="data-value" id="gyroZ">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Environment Sensors Card -->
+            <div class="sensor-card environment-card">
+                <h3><span class="sensor-icon">🌡️</span>Environment</h3>
+                <div class="sensor-data">
+                    <div class="data-row">
+                        <span class="data-label">Light Level:</span>
+                        <span class="data-value" id="light">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Proximity:</span>
+                        <span class="data-value" id="proximity">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Battery:</span>
+                        <span class="data-value" id="battery">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Magnetometer Card -->
+            <div class="sensor-card">
+                <h3><span class="sensor-icon">🧭</span>Magnetometer</h3>
+                <div class="sensor-data">
+                    <div class="data-row">
+                        <span class="data-label">Mag X:</span>
+                        <span class="data-value" id="magX">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Mag Y:</span>
+                        <span class="data-value" id="magY">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Mag Z:</span>
+                        <span class="data-value" id="magZ">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ONNX Runtime for web -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.15.1/dist/ort.min.js"></script>
+
+    <script>
+        // Use the base URL passed from the Flask server
+        const cameraBaseUrl = "{{ camera_base_url }}";
+
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI Elements
+        const latSpan = document.getElementById('lat');
+        const lonSpan = document.getElementById('lon');
+        const gpsStatusSpan = document.getElementById('gpsStatus');
+        const objectCountSpan = document.getElementById('objectCount');
+        const inferenceTimeSpan = document.getElementById('inferenceTime');
+        const fpsSpan = document.getElementById('fps');
+
+        const modelPath = '/static/yolov8n.onnx';
+        let session;
+        let lastFrameTime = Date.now();
+        let frameCount = 0;
+        let fpsCounter = 0;
+
+        // --- 1. Model & UI Setup ---
+        async function setup() {
+            try {
+                // The model expects a 640x640 input, so we'll work with that size
+                canvas.width = 640;
+                canvas.height = 640;
+
+                session = await ort.InferenceSession.create(modelPath);
+                console.log("ONNX session created successfully.");
+                
+                // Start the detection loop directly
+                detectFrame(); 
+
+                fetchSensorData();
+                setInterval(fetchSensorData, 2000); // Fetch sensor data every 2 seconds
+
+                // FPS counter
+                setInterval(() => {
+                    fpsSpan.textContent = fpsCounter.toFixed(1);
+                    fpsCounter = 0;
+                }, 1000);
+
+            } catch (e) {
+                console.error(`Failed to setup ONNX session: ${e}`);
+            }
+        }
+
+        // --- 2. Main Detection Loop ---
+        async function detectFrame() {
+            if (!session || video.paused || video.ended) {
+                return;
+            }
+
+            const startTime = performance.now();
+
+            // Pre-process the frame
+            const tensor = await preprocess(video);
+
+            // Run inference
+            const feeds = { 'images': tensor };
+            const results = await session.run(feeds);
+            const outputData = results.output0.data;
+
+            const endTime = performance.now();
+            const inferenceTime = (endTime - startTime).toFixed(1);
+            inferenceTimeSpan.textContent = `${inferenceTime} ms`;
+
+            // Post-process and draw
+            const detectedObjects = drawBoundingBoxes(outputData);
+            objectCountSpan.textContent = detectedObjects;
+
+            // Update FPS
+            fpsCounter++;
+
+            // Request next frame
+            requestAnimationFrame(detectFrame);
+        }
+
+        // --- 3. Image Pre-processing ---
+        async function preprocess(source) {
+            // Draw the video frame to a temporary canvas to get pixel data
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 640;
+            tempCanvas.height = 640;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(source, 0, 0, 640, 640);
+
+            const imageData = tempCtx.getImageData(0, 0, 640, 640);
+            const { data } = imageData;
+            const float32Data = new Float32Array(3 * 640 * 640);
+            
+            // Convert from [R,G,B,A,...] to [R,R,R,...,G,G,G,...,B,B,B,...] and normalize
+            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+                float32Data[j] = data[i] / 255.0;           // R
+                float32Data[j + 640 * 640] = data[i + 1] / 255.0; // G
+                float32Data[j + 2 * 640 * 640] = data[i + 2] / 255.0; // B
+            }
+
+            return new ort.Tensor('float32', float32Data, [1, 3, 640, 640]);
+        }
+
+        // --- 4. Post-processing and Drawing ---
+        function drawBoundingBoxes(outputData) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous boxes
+            
+            const boxes = [];
+            for (let i = 0; i < 8400; i++) {
+                const class_id = 0; // We are only interested in 'person'
+                const prob = outputData[4 * 8400 + i]; // Confidence score for 'person' class
+
+                if (prob < 0.5) { // Confidence threshold
+                    continue;
+                }
+
+                const xc = outputData[0 * 8400 + i];
+                const yc = outputData[1 * 8400 + i];
+                const w = outputData[2 * 8400 + i];
+                const h = outputData[3 * 8400 + i];
+                
+                boxes.push([xc - w/2, yc - h/2, w, h, 'person', prob]);
+            }
+
+            // Perform Non-Max Suppression (a simple version)
+            const finalBoxes = nonMaxSuppression(boxes, 0.5);
+
+            finalBoxes.forEach(([x, y, width, height, label, prob]) => {
+                ctx.strokeStyle = "#4CAF50";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x, y, width, height);
+
+                // Draw label background
+                ctx.fillStyle = "rgba(76, 175, 80, 0.8)";
+                ctx.fillRect(x, y > 30 ? y - 30 : y, 120, 25);
+
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 16px sans-serif";
+                ctx.fillText(`${label} ${(prob * 100).toFixed(0)}%`, x + 5, y > 30 ? y - 10 : y + 18);
+            });
+
+            return finalBoxes.length;
+        }
+        
+        // Simple NMS implementation
+        function nonMaxSuppression(boxes, iouThreshold) {
+            boxes.sort((a, b) => b[5] - a[5]); // Sort by probability
+            const result = [];
+            while (boxes.length > 0) {
+                result.push(boxes[0]);
+                boxes = boxes.filter(box => iou(boxes[0], box) < iouThreshold);
+            }
+            return result;
+        }
+
+        function iou(box1, box2) {
+            const [x1, y1, w1, h1] = box1;
+            const [x2, y2, w2, h2] = box2;
+            const x_inter1 = Math.max(x1, x2);
+            const y_inter1 = Math.max(y1, y2);
+            const x_inter2 = Math.min(x1 + w1, x2 + w2);
+            const y_inter2 = Math.min(y1 + h1, y2 + h2);
+            const inter_area = Math.max(0, x_inter2 - x_inter1) * Math.max(0, y_inter2 - y_inter1);
+            const union_area = w1 * h1 + w2 * h2 - inter_area;
+            return inter_area / union_area;
+        }
+
+        // --- 5. Sensor Data Fetching ---
+        async function fetchSensorData() {
+            const sensorsUrl = `${cameraBaseUrl}/sensors.json`;
+
+            try {
+                const response = await fetch(sensorsUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const sensorData = await response.json();
+
+                // GPS Data
+                if (sensorData.gps && sensorData.gps.data && sensorData.gps.data.length > 0) {
+                    const gps = sensorData.gps.data[0][0].values;
+                    latSpan.textContent = gps[0].toFixed(6);
+                    lonSpan.textContent = gps[1].toFixed(6);
+                    gpsStatusSpan.innerHTML = '<span class="status-indicator status-online"></span>Connected';
+                } else {
+                    latSpan.textContent = 'No data';
+                    lonSpan.textContent = 'No data';
+                    gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>No GPS';
+                }
+
+                // Accelerometer
+                updateSensorValue(sensorData, 'accel', ['accelX', 'accelY', 'accelZ'], ' m/s²');
+
+                // Gyroscope  
+                updateSensorValue(sensorData, 'gyro', ['gyroX', 'gyroY', 'gyroZ'], ' rad/s');
+
+                // Magnetometer
+                updateSensorValue(sensorData, 'mag', ['magX', 'magY', 'magZ'], ' μT');
+
+                // Light sensor
+                updateSingleSensorValue(sensorData, 'light', 'light', ' lux');
+
+                // Proximity sensor
+                updateSingleSensorValue(sensorData, 'prox', 'proximity', ' cm');
+
+                // Battery
+                updateSingleSensorValue(sensorData, 'batTemp', 'battery', '°C');
+
+            } catch (e) {
+                console.error(`Could not fetch sensor data from ${sensorsUrl}. Error: ${e}`);
+                // Set error states
+                latSpan.textContent = 'Error';
+                lonSpan.textContent = 'Error';
+                gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>Error';
+            }
+        }
+
+        function updateSensorValue(sensorData, sensorKey, elementIds, unit) {
+            if (sensorData[sensorKey] && sensorData[sensorKey].data && sensorData[sensorKey].data.length > 0) {
+                const values = sensorData[sensorKey].data[0][0].values;
+                elementIds.forEach((id, index) => {
+                    if (values[index] !== undefined) {
+                        document.getElementById(id).textContent = `${values[index].toFixed(2)}${unit}`;
+                    }
+                });
+            }
+        }
+
+        function updateSingleSensorValue(sensorData, sensorKey, elementId, unit) {
+            if (sensorData[sensorKey] && sensorData[sensorKey].data && sensorData[sensorKey].data.length > 0) {
+                const value = sensorData[sensorKey].data[0][0].values[0];
+                document.getElementById(elementId).textContent = `${value.toFixed(2)}${unit}`;
+            }
+        }
+
+        // Start everything
+        setup();
+    </script>
+</body>
+</html>
