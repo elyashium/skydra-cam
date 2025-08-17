@@ -268,8 +268,9 @@
         <div class="video-section">
             <div class="video-header">LIVE FEED :: CAM_01</div>
             <div class="video-container">
-                <img id="videoElement" src="{{ url_for('video_feed') }}" width="640" height="640">
+                <img id="videoElement" src="{{ url_for('video_feed') }}" width="640" height="480">
                 <canvas id="canvas"></canvas>
+                <div id="gpsOverlay"></div>
             </div>
             
             <div class="detection-stats">
@@ -434,8 +435,13 @@
                 // Start the detection loop directly
                 detectFrame(); 
 
+                // Fetch sensor data from IP Webcam app
                 fetchSensorData();
-                setInterval(fetchSensorData, 2000); // Fetch sensor data every 2 seconds
+                setInterval(fetchSensorData, 2000);
+
+                // Fetch GPS data from our Termux endpoint
+                fetchTermuxGpsData();
+                setInterval(fetchTermuxGpsData, 1000); // Fetch every second
 
                 // FPS counter
                 setInterval(() => {
@@ -626,6 +632,32 @@
             return inter_area / union_area;
         }
 
+        // --- NEW FUNCTION: Fetch GPS data from Termux ---
+        async function fetchTermuxGpsData() {
+            try {
+                const response = await fetch('/api/gps_data');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                if (data.lat !== null && data.lon !== null) {
+                    latSpan.textContent = data.lat.toFixed(6);
+                    lonSpan.textContent = data.lon.toFixed(6);
+                    gpsStatusSpan.innerHTML = '<span class="status-indicator status-online"></span>ONLINE';
+                } else {
+                    latSpan.textContent = 'NULL';
+                    lonSpan.textContent = 'NULL';
+                    gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>OFFLINE';
+                }
+            } catch (e) {
+                console.error(`Could not fetch Termux GPS data: ${e}`);
+                latSpan.textContent = 'ERROR';
+                lonSpan.textContent = 'ERROR';
+                gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>ERROR';
+            }
+        }
+
         // --- 5. Sensor Data Fetching ---
         async function fetchSensorData() {
             try {
@@ -636,17 +668,8 @@
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    // GPS Data
-                    if (data.gps.available) {
-                        latSpan.textContent = data.gps.latitude.toFixed(6);
-                        lonSpan.textContent = data.gps.longitude.toFixed(6);
-                        gpsStatusSpan.innerHTML = '<span class="status-indicator status-online"></span>ONLINE';
-                    } else {
-                        latSpan.textContent = 'NULL';
-                        lonSpan.textContent = 'NULL';
-                        gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>OFFLINE';
-                    }
-
+                    // We no longer get GPS from this endpoint, so we remove that part
+                    
                     // Accelerometer Data
                     if (data.accelerometer.available) {
                         document.getElementById('accelX').textContent = `${data.accelerometer.x} m/s²`;

@@ -1,9 +1,12 @@
-from flask import Flask, Response, render_template, jsonify
+from flask import Flask, Response, render_template, jsonify, request
 import cv2
 import requests
 import json
 
 app = Flask(__name__)
+
+# Global variable to store the latest GPS data
+gps_data = {"lat": None, "lon": None}
 
 # The single source of truth for the camera URL
 camera_url = "http://10.79.246.247:8080/video"
@@ -11,24 +14,42 @@ camera_url = "http://10.79.246.247:8080/video"
 camera_base_url = "http://10.79.246.247:8080"
 
 
-def generate_frames():
-    """Video streaming generator function."""
-    cap = cv2.VideoCapture(camera_url)
-    if not cap.isOpened():
-        print(f"Error: Could not open video stream at {camera_url}")
-        return
+@app.route("/update_location", methods=["POST"])
+def update_location():
+    """Endpoint to receive GPS data from Termux."""
+    global gps_data
+    data = request.json
+    gps_data["lat"] = data.get("latitude")
+    gps_data["lon"] = data.get("longitude")
+    print(f"Received GPS: Lat={gps_data['lat']}, Lon={gps_data['lon']}") # For debugging
+    return jsonify({"status": "ok"})
 
-    while True:
-        success, frame = cap.read()
-        if not success:
-            break
-        else:
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-    cap.release()
+@app.route('/video_feed')
+def video_feed():
+    """Video streaming route. This route now directly proxies the camera feed."""
+    try:
+        # Use stream=True to avoid loading the whole video into memory at once
+        req = requests.get(camera_url, stream=True, timeout=10)
+        
+        # Check if the request was successful
+        req.raise_for_status()
+        
+        # Return a streaming response, passing through the original content-type header
+        # which includes the all-important frame boundary definition.
+        return Response(req.iter_content(chunk_size=10240),
+                        content_type=req.headers['content-type'])
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error proxying video stream: {e}")
+        # Return a 502 Bad Gateway error to the client
+        return "Could not connect to video stream.", 502
+
+
+@app.route('/api/gps_data')
+def gps_data_api():
+    """API endpoint to provide the latest GPS data."""
+    return jsonify(gps_data)
 
 
 @app.route('/')
@@ -36,13 +57,6 @@ def index():
     """Video streaming home page."""
     # Pass the camera's base URL to the template
     return render_template('index.html', camera_base_url=camera_base_url)
-
-
-@app.route('/video_feed')
-def video_feed():
-    """Video streaming route. Put this in the src attribute of an img tag."""
-    return Response(generate_frames(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 @app.route('/api/sensors')
