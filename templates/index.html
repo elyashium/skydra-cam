@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkyDra Detection Cam - Monitoring Dashboard</title>
+    <title>SkyDra Detection Cam - HTTP Stream</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
         
@@ -88,21 +88,16 @@
             align-items: center;
             justify-content: center;
             min-height: 0;
+            background: #000;
         }
 
-        #videoElement {
+        #videoStream {
             display: block;
             max-width: 100%;
             max-height: 100%;
             width: auto;
             height: auto;
-        }
-
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
+            border-radius: 2px;
         }
 
         .detection-stats {
@@ -190,6 +185,7 @@
             width: 6px;
             height: 6px;
             margin-right: 4px;
+            border-radius: 50%;
         }
 
         .status-online {
@@ -202,12 +198,35 @@
             box-shadow: 0 0 5px #ff0000;
         }
 
-        .detection-stats {
-            border-color: #00ff00;
+        .status-connecting {
+            background: #ffff00;
+            box-shadow: 0 0 5px #ffff00;
         }
 
-        .detection-stats h3 {
-            color: #00ff00;
+        /* Loading animation for video */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        /* Matrix-style effects */
+        .sensor-card, .video-section, .detection-stats {
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+        }
+
+        /* Animation for detection count
+        .detection-pulse {
+            animation: pulse 0.5s ease-in-out;
+        } */
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
 
         @media (max-width: 1200px) {
@@ -217,71 +236,39 @@
             }
             
             .header h1 {
-                font-size: 1.5rem;
+                font-size: 1.2rem;
             }
-            
-            body {
-                padding: 10px;
-            }
-        }
-
-        /* Matrix-style glow effects */
-        .sensor-card {
-            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
-        }
-
-        .video-section {
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #000000;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #00ff00;
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #00cc00;
         }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>SKYDRA DETECTION CAM</h1>
-        <p class="subtitle">NEURAL SURVEILLANCE PROTOCOL v2.1.0</p>
+        <p class="subtitle">HTTP STREAM PROTOCOL v2.1.0</p>
     </div>
 
     <div class="system-info">
-        <div>SYS: ONLINE</div>
+        <div>SYS: <span id="systemStatus">ONLINE</span></div>
         <div id="currentTime">--:--:--</div>
     </div>
 
     <div class="dashboard">
         <div class="video-section">
-            <div class="video-header">LIVE FEED :: CAM_01</div>
+            <div class="video-header">LIVE FEED :: CAM_01 :: HTTP_MJPEG</div>
             <div class="video-container">
-                <img id="videoElement" src="{{ url_for('video_feed') }}" width="640" height="480">
-                <canvas id="canvas"></canvas>
-                <div id="gpsOverlay"></div>
+                <img id="videoStream" src="/video_feed" alt="Live Video Feed">
+                <div id="loadingIndicator" class="loading">CONNECTING TO STREAM...</div>
             </div>
             
             <div class="detection-stats">
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <div class="stat-label">TARGETS</div>
+                        <div class="stat-label">PERSONS</div>
                         <div class="stat-value" id="objectCount">0</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-label">LATENCY</div>
-                        <div class="stat-value" id="inferenceTime">--</div>
+                        <div class="stat-value" id="latency">--</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-label">FPS</div>
@@ -290,7 +277,8 @@
                     <div class="stat-item">
                         <div class="stat-label">STATUS</div>
                         <div class="stat-value">
-                            <span class="status-indicator status-online"></span>ACTIVE
+                            <span class="status-indicator" id="streamStatus"></span>
+                            <span id="streamStatusText">CONNECTING</span>
                         </div>
                     </div>
                 </div>
@@ -390,352 +378,124 @@
         </div>
     </div>
 
-    <!-- ONNX Runtime for web -->
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.15.1/dist/ort.min.js"></script>
-
     <script>
-        // Use the base URL passed from the Flask server
-        const cameraBaseUrl = "{{ camera_base_url }}";
-
-        const video = document.getElementById('videoElement');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        
         // UI Elements
-        const latSpan = document.getElementById('lat');
-        const lonSpan = document.getElementById('lon');
-        const gpsStatusSpan = document.getElementById('gpsStatus');
+        const videoStream = document.getElementById('videoStream');
+        const loadingIndicator = document.getElementById('loadingIndicator');
         const objectCountSpan = document.getElementById('objectCount');
-        const inferenceTimeSpan = document.getElementById('inferenceTime');
+        const latencySpan = document.getElementById('latency');
         const fpsSpan = document.getElementById('fps');
+        const streamStatus = document.getElementById('streamStatus');
+        const streamStatusText = document.getElementById('streamStatusText');
+        
+        let lastDetectionCount = 0;
 
-        const modelPath = '/static/yolov8n.onnx';
-        let session;
-        let lastFrameTime = Date.now();
-        let frameCount = 0;
-        let fpsCounter = 0;
+        // Handle video stream events
+        videoStream.addEventListener('load', () => {
+            console.log('Video stream loaded successfully');
+            loadingIndicator.style.display = 'none';
+            streamStatus.className = 'status-indicator status-online';
+            streamStatusText.textContent = 'ACTIVE';
+        });
 
-        // --- 1. Model & UI Setup ---
-        async function setup() {
+        videoStream.addEventListener('error', (e) => {
+            console.error('Video stream error:', e);
+            loadingIndicator.style.display = 'block';
+            loadingIndicator.textContent = 'STREAM ERROR - RECONNECTING...';
+            streamStatus.className = 'status-indicator status-offline';
+            streamStatusText.textContent = 'ERROR';
+        });
+
+        // Fetch detection statistics
+        async function fetchDetectionStats() {
             try {
-                session = await ort.InferenceSession.create(modelPath);
-                console.log("ONNX session created successfully.");
-                
-                // Wait for the video element to load and then set canvas size
-                video.onload = function() {
-                    updateCanvasSize();
-                };
-                
-                // Also update canvas size on window resize
-                window.addEventListener('resize', updateCanvasSize);
-                
-                // Initial canvas size setup
-                updateCanvasSize();
-                
-                // Start the detection loop directly
-                detectFrame(); 
+                const response = await fetch('/api/detection_stats');
+                const data = await response.json();
 
-                // Fetch sensor data from IP Webcam app
-                fetchSensorData();
-                setInterval(fetchSensorData, 2000);
+                objectCountSpan.textContent = data.detections;
+                latencySpan.textContent = data.latency ? `${data.latency}ms` : '--';
+                fpsSpan.textContent = data.fps || '--';
 
-                // Fetch GPS data from our Termux endpoint
-                fetchTermuxGpsData();
-                setInterval(fetchTermuxGpsData, 1000); // Fetch every second
+                // Animation for new detections
+                if (data.detections > lastDetectionCount) {
+                    objectCountSpan.classList.add('detection-pulse');
+                    setTimeout(() => objectCountSpan.classList.remove('detection-pulse'), 500);
+                }
+                lastDetectionCount = data.detections;
 
-                // FPS counter
-                setInterval(() => {
-                    fpsSpan.textContent = fpsCounter.toFixed(1);
-                    fpsCounter = 0;
-                }, 1000);
+                // Update status based on activity
+                if (data.status === 'active') {
+                    streamStatus.className = 'status-indicator status-online';
+                    streamStatusText.textContent = 'ACTIVE';
+                } else {
+                    streamStatus.className = 'status-indicator status-connecting';
+                    streamStatusText.textContent = 'CONNECTING';
+                }
 
             } catch (e) {
-                console.error(`Failed to setup ONNX session: ${e}`);
+                console.error('Failed to fetch detection stats:', e);
+                streamStatus.className = 'status-indicator status-offline';
+                streamStatusText.textContent = 'ERROR';
             }
         }
 
-        // Function to properly size the canvas to match the video display
-        function updateCanvasSize() {
-            const rect = video.getBoundingClientRect();
-            canvas.width = video.offsetWidth;
-            canvas.height = video.offsetHeight;
-            canvas.style.width = video.offsetWidth + 'px';
-            canvas.style.height = video.offsetHeight + 'px';
-        }
-
-        // --- 2. Main Detection Loop ---
-        async function detectFrame() {
-            if (!session || video.paused || video.ended) {
-                return;
-            }
-
-            const startTime = performance.now();
-
-            // Pre-process the frame
-            const tensor = await preprocess(video);
-
-            // Run inference
-            const feeds = { 'images': tensor };
-            const results = await session.run(feeds);
-            const outputData = results.output0.data;
-
-            const endTime = performance.now();
-            const inferenceTime = (endTime - startTime).toFixed(1);
-            inferenceTimeSpan.textContent = `${inferenceTime} ms`;
-
-            // Post-process and draw
-            const detectedObjects = drawBoundingBoxes(outputData);
-            objectCountSpan.textContent = detectedObjects;
-
-            // Update FPS
-            fpsCounter++;
-
-            // Request next frame
-            requestAnimationFrame(detectFrame);
-        }
-
-        // --- 3. Image Pre-processing ---
-        async function preprocess(source) {
-            // Draw the video frame to a temporary canvas to get pixel data
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = 640;
-            tempCanvas.height = 640;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(source, 0, 0, 640, 640);
-
-            const imageData = tempCtx.getImageData(0, 0, 640, 640);
-            const { data } = imageData;
-            const float32Data = new Float32Array(3 * 640 * 640);
-            
-            // Convert from [R,G,B,A,...] to [R,R,R,...,G,G,G,...,B,B,B,...] and normalize
-            for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-                float32Data[j] = data[i] / 255.0;           // R
-                float32Data[j + 640 * 640] = data[i + 1] / 255.0; // G
-                float32Data[j + 2 * 640 * 640] = data[i + 2] / 255.0; // B
-            }
-
-            return new ort.Tensor('float32', float32Data, [1, 3, 640, 640]);
-        }
-
-        // --- 4. Post-processing and Drawing ---
-        function drawBoundingBoxes(outputData) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous boxes
-            
-            // Calculate scaling factors from model input (640x640) to actual display size
-            const scaleX = canvas.width / 640;
-            const scaleY = canvas.height / 640;
-            
-            const boxes = [];
-            for (let i = 0; i < 8400; i++) {
-                const class_id = 0; // We are only interested in 'person'
-                const prob = outputData[4 * 8400 + i]; // Confidence score for 'person' class
-
-                if (prob < 0.5) { // Confidence threshold
-                    continue;
-                }
-
-                const xc = outputData[0 * 8400 + i];
-                const yc = outputData[1 * 8400 + i];
-                const w = outputData[2 * 8400 + i];
-                const h = outputData[3 * 8400 + i];
-                
-                boxes.push([xc - w/2, yc - h/2, w, h, 'person', prob]);
-            }
-
-            // Perform Non-Max Suppression (a simple version)
-            const finalBoxes = nonMaxSuppression(boxes, 0.5);
-
-            finalBoxes.forEach(([x, y, width, height, label, prob]) => {
-                // Scale coordinates to match the actual display size
-                const scaledX = x * scaleX;
-                const scaledY = y * scaleY;
-                const scaledWidth = width * scaleX;
-                const scaledHeight = height * scaleY;
-
-                // Main bounding box
-                ctx.strokeStyle = "#00ff00";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
-
-                // Corner accents for Matrix style
-                const cornerSize = Math.min(15, scaledWidth / 4, scaledHeight / 4);
-                ctx.strokeStyle = "#00ff00";
-                ctx.lineWidth = 3;
-                
-                // Top-left corner
-                ctx.beginPath();
-                ctx.moveTo(scaledX, scaledY + cornerSize);
-                ctx.lineTo(scaledX, scaledY);
-                ctx.lineTo(scaledX + cornerSize, scaledY);
-                ctx.stroke();
-
-                // Top-right corner
-                ctx.beginPath();
-                ctx.moveTo(scaledX + scaledWidth - cornerSize, scaledY);
-                ctx.lineTo(scaledX + scaledWidth, scaledY);
-                ctx.lineTo(scaledX + scaledWidth, scaledY + cornerSize);
-                ctx.stroke();
-
-                // Bottom-left corner
-                ctx.beginPath();
-                ctx.moveTo(scaledX, scaledY + scaledHeight - cornerSize);
-                ctx.lineTo(scaledX, scaledY + scaledHeight);
-                ctx.lineTo(scaledX + cornerSize, scaledY + scaledHeight);
-                ctx.stroke();
-
-                // Bottom-right corner
-                ctx.beginPath();
-                ctx.moveTo(scaledX + scaledWidth - cornerSize, scaledY + scaledHeight);
-                ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight);
-                ctx.lineTo(scaledX + scaledWidth, scaledY + scaledHeight - cornerSize);
-                ctx.stroke();
-
-                // Label background
-                const labelWidth = Math.min(100, scaledWidth);
-                const labelHeight = 20;
-                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-                ctx.fillRect(scaledX, scaledY > 25 ? scaledY - 25 : scaledY + scaledHeight, labelWidth, labelHeight);
-
-                // Label text
-                ctx.fillStyle = "#00ff00";
-                ctx.font = `${Math.max(10, Math.min(12, scaledWidth / 8))}px 'JetBrains Mono', monospace`;
-                ctx.shadowColor = "#00ff00";
-                ctx.shadowBlur = 5;
-                ctx.fillText(`${label.toUpperCase()} ${(prob * 100).toFixed(0)}%`, 
-                    scaledX + 3, scaledY > 25 ? scaledY - 8 : scaledY + scaledHeight + 15);
-                ctx.shadowBlur = 0;
-            });
-
-            return finalBoxes.length;
-        }
-        
-        // Simple NMS implementation
-        function nonMaxSuppression(boxes, iouThreshold) {
-            boxes.sort((a, b) => b[5] - a[5]); // Sort by probability
-            const result = [];
-            while (boxes.length > 0) {
-                result.push(boxes[0]);
-                boxes = boxes.filter(box => iou(boxes[0], box) < iouThreshold);
-            }
-            return result;
-        }
-
-        function iou(box1, box2) {
-            const [x1, y1, w1, h1] = box1;
-            const [x2, y2, w2, h2] = box2;
-            const x_inter1 = Math.max(x1, x2);
-            const y_inter1 = Math.max(y1, y2);
-            const x_inter2 = Math.min(x1 + w1, x2 + w2);
-            const y_inter2 = Math.min(y1 + h1, y2 + h2);
-            const inter_area = Math.max(0, x_inter2 - x_inter1) * Math.max(0, y_inter2 - y_inter1);
-            const union_area = w1 * h1 + w2 * h2 - inter_area;
-            return inter_area / union_area;
-        }
-
-        // --- NEW FUNCTION: Fetch GPS data from Termux ---
-        async function fetchTermuxGpsData() {
+        // GPS data fetching
+        async function fetchGpsData() {
             try {
                 const response = await fetch('/api/gps_data');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
                 const data = await response.json();
 
                 if (data.lat !== null && data.lon !== null) {
-                    latSpan.textContent = data.lat.toFixed(6);
-                    lonSpan.textContent = data.lon.toFixed(6);
-                    gpsStatusSpan.innerHTML = '<span class="status-indicator status-online"></span>ONLINE';
+                    document.getElementById('lat').textContent = data.lat.toFixed(6);
+                    document.getElementById('lon').textContent = data.lon.toFixed(6);
+                    document.getElementById('gpsStatus').innerHTML = '<span class="status-indicator status-online"></span>ONLINE';
                 } else {
-                    latSpan.textContent = 'NULL';
-                    lonSpan.textContent = 'NULL';
-                    gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>OFFLINE';
+                    document.getElementById('lat').textContent = 'NULL';
+                    document.getElementById('lon').textContent = 'NULL';
+                    document.getElementById('gpsStatus').innerHTML = '<span class="status-indicator status-offline"></span>OFFLINE';
                 }
             } catch (e) {
-                console.error(`Could not fetch Termux GPS data: ${e}`);
-                latSpan.textContent = 'ERROR';
-                lonSpan.textContent = 'ERROR';
-                gpsStatusSpan.innerHTML = '<span class="status-indicator status-offline"></span>ERROR';
+                console.error('GPS fetch failed:', e);
+                document.getElementById('lat').textContent = 'ERROR';
+                document.getElementById('lon').textContent = 'ERROR';
+                document.getElementById('gpsStatus').innerHTML = '<span class="status-indicator status-offline"></span>ERROR';
             }
         }
 
-        // --- 5. Sensor Data Fetching ---
+        // Sensor data fetching
         async function fetchSensorData() {
             try {
                 const response = await fetch('/api/sensors');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
                 const data = await response.json();
 
                 if (data.status === 'success') {
-                    // We no longer get GPS from this endpoint, so we remove that part
-                    
-                    // Accelerometer Data
+                    // Update sensor values (same as before)
                     if (data.accelerometer.available) {
                         document.getElementById('accelX').textContent = `${data.accelerometer.x} m/s²`;
                         document.getElementById('accelY').textContent = `${data.accelerometer.y} m/s²`;
                         document.getElementById('accelZ').textContent = `${data.accelerometer.z} m/s²`;
-                    } else {
-                        document.getElementById('accelX').textContent = 'NULL';
-                        document.getElementById('accelY').textContent = 'NULL';
-                        document.getElementById('accelZ').textContent = 'NULL';
                     }
-
-                    // Gyroscope Data
                     if (data.gyroscope.available) {
                         document.getElementById('gyroX').textContent = `${data.gyroscope.x} rad/s`;
                         document.getElementById('gyroY').textContent = `${data.gyroscope.y} rad/s`;
                         document.getElementById('gyroZ').textContent = `${data.gyroscope.z} rad/s`;
-                    } else {
-                        document.getElementById('gyroX').textContent = 'NULL';
-                        document.getElementById('gyroY').textContent = 'NULL';
-                        document.getElementById('gyroZ').textContent = 'NULL';
                     }
-
-                    // Magnetometer Data
                     if (data.magnetometer.available) {
                         document.getElementById('magX').textContent = `${data.magnetometer.x} μT`;
                         document.getElementById('magY').textContent = `${data.magnetometer.y} μT`;
                         document.getElementById('magZ').textContent = `${data.magnetometer.z} μT`;
-                    } else {
-                        document.getElementById('magX').textContent = 'NULL';
-                        document.getElementById('magY').textContent = 'NULL';
-                        document.getElementById('magZ').textContent = 'NULL';
                     }
-
-                    // Environment Data
-                    document.getElementById('light').textContent = data.environment.light !== null 
-                        ? `${data.environment.light} lux` : 'NULL';
-                    document.getElementById('proximity').textContent = data.environment.proximity !== null 
-                        ? `${data.environment.proximity} cm` : 'NULL';
-                    document.getElementById('battery').textContent = data.environment.battery !== null 
-                        ? `${data.environment.battery}°C` : 'NULL';
-
-                } else {
-                    // Handle error response from backend
-                    console.error('Backend error:', data.message);
-                    setAllSensorValues('ERROR');
+                    
+                    document.getElementById('light').textContent = data.environment.light ?? 'NULL';
+                    document.getElementById('proximity').textContent = data.environment.proximity ?? 'NULL';
+                    document.getElementById('battery').textContent = data.environment.battery ?? 'NULL';
                 }
-
             } catch (e) {
-                console.error(`Could not fetch sensor data from Flask backend. Error: ${e}`);
-                setAllSensorValues('ERROR');
+                console.error('Sensor fetch failed:', e);
             }
         }
 
-        function setAllSensorValues(value) {
-            // Set all sensor values to the specified value (for error states)
-            latSpan.textContent = value;
-            lonSpan.textContent = value;
-            gpsStatusSpan.innerHTML = `<span class="status-indicator status-offline"></span>${value}`;
-            
-            ['accelX', 'accelY', 'accelZ', 'gyroX', 'gyroY', 'gyroZ', 
-             'magX', 'magY', 'magZ', 'light', 'proximity', 'battery'].forEach(id => {
-                document.getElementById(id).textContent = value;
-            });
-        }
-
-        // Real-time clock
+        // Clock update
         function updateClock() {
             const now = new Date();
             const timeString = now.toLocaleTimeString('en-US', { 
@@ -747,12 +507,25 @@
             document.getElementById('currentTime').textContent = timeString;
         }
 
-        // Update clock every second
-        setInterval(updateClock, 1000);
-        updateClock(); // Initial call
-
-        // Start everything
-        setup();
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 SkyDra Detection Cam - HTTP Stream Mode');
+            
+            // Start all intervals
+            updateClock();
+            setInterval(updateClock, 1000);
+            
+            fetchDetectionStats();
+            setInterval(fetchDetectionStats, 1000); // Update stats every second
+            
+            fetchGpsData();
+            setInterval(fetchGpsData, 2000);
+            
+            fetchSensorData();
+            setInterval(fetchSensorData, 3000);
+            
+            console.log('✅ All systems initialized');
+        });
     </script>
 </body>
 </html>

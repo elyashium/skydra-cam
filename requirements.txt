@@ -1,9 +1,9 @@
-numpy<2.0
+aiohttp
+aiortc
+av
 opencv-python
-torch
 ultralytics
-Flask
-onnx
-onnxruntime
-onnxslim
+torch
+torchvision
+torchaudio
 requests
